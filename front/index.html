@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>php_db_api</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+    <h1>海外人材活用セミナー</h1>
+    <p>本日はセミナーにご参加いただきまして、誠に有難うございます。<br>お手数ですがアンケートにご協力下さい。</p>
+    <p>令和2年1月31日</p>
+
+    <fieldset>
+        <legend>insert form</legend>
+        <!-- <form id="hoge"> -->
+        <form>
+            <div>
+                <label for="company">会社名</label>
+                <input type="name" id="company">
+            </div>
+            <div>
+                <label for="name">名前/役職</label>
+                <input type="name" id="name">
+            </div>
+            <div>
+                <label for="tel">電話番号</label>
+                <input type="tel" 　pattern="[0-9]{3}-[0-9]{4}-[0-9]{4}" placeholder="090-1234-5678" id="tel">
+            </div>
+            <div>
+                <label for="email">メールアドレス</label>
+                <input type="email" placeholder="info@sample.com" id="email">
+            </div>
+            <div>
+                <label for="deadline">日付</label>
+                <input type="date" id="deadline">
+            </div>
+            <!-- <div>
+                本日のセミナーの満足度に当てはまる項目にチェックを入れてください。
+                <input type="radio" name="hyouka" value="good">満足した
+                <input type="radio" name="hyouka" value="Neither">どちらとも言えない
+                <input type="radio" name="hyouka" value="bad" checked="checked">満足していない
+                
+            </div> -->
+            <div>
+                <label for="comment">本日のセミナーの感想をお聞かせください。(任意)</label>
+                <textarea name="" id="comment" cols="30" rows="10"></textarea>
+            </div>
+            <button type="button" id="send">send</button>
+        </form>
+    </fieldset>
+
+    <fieldset>
+        <legend>search form</legend>
+        <form>
+            <div>
+                <label for="search">search</label>
+                <input type="text" id="search">
+            </div>
+        </form>
+    </fieldset>
+
+    <fieldset>
+        <legend>海外人材活用アンケート</legend>
+        <table>
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>company</th>
+                    <th>name</th>
+                    <th>tel</th>
+                    <th>email</th>
+                    <th>deadline</th>
+                    <!-- <th>radio</th> -->
+                    <th>comment</th>
+                    <th>created_at</th>
+                    <th>updated</th>
+                </tr>
+            </thead>
+            <tbody id="echo"></tbody>
+        </table>
+    </fieldset>
+    <!-- モーダルの要素 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <fieldset>
+                <legend>edit form</legend>
+                <form>
+                    <div>
+                        <label for="companyEdit">会社名</label>
+                        <input type="name" id="companyEdit">
+                    </div>
+                    <div>
+                        <label for="nameEdit">名前/役職</label>
+                        <input type="name" id="nameEdit">
+                    </div>
+                    <div>
+                        <label for="telEdit">電話番号</label>
+                        <input type="tel" pattern="[0-9]{3}-[0-9]{4}-[0-9]{4}" placeholder="090-1234-5678" id="telEdit">
+                    </div>
+                    <div>
+                        <label for="emailEdit">メールアドレス</label>
+                        <input type="email" placeholder="info@sample.com" id="emailEdit">
+                    </div>
+                    <div>
+                        <label for="deadlineEdit">日付</label>
+                        <input type="date" id="deadlineEdit">
+                    </div>
+                    <div>
+                        <label for="commentEdit">本日のセミナーの感想をお聞かせください。(任意)</label>
+                        <textarea name="" id="commentEdit" cols="30" rows="10"></textarea>
+                    </div>
+                    <input type="hidden" name="" id="hiddenId">
+                    <button type="button" id="updateButton">update</button>
+                </form>
+            </fieldset>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script>
+        // モーダルの黒い部分クリックで閉じる処理
+        document.getElementById('modal').addEventListener('click', e => {
+            // モーダルのフォームクリック時には閉じないように条件を分ける
+            if (e.target == document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+            }
+        });
+
+        const createUrl = '../api/create.php';
+        const readUrl = '../api/read.php';
+        // const readUrl = '../api/test.json';
+
+        // 配列をタグに入れていい感じの形にする関数
+        const convertArraytoListTag = array => {
+            return array.map(x => {
+                // 編集ボタンと削除ボタンを追加
+                return `<tr>
+               <td>
+                   <button type="button" class="editButton" value=${x.id}>edit</button>
+                   <button type="button" class="deleteButton" value=${x.id}>delete</button>
+                  </td>
+                  <td>${x.id}</td>
+                  <td>${x.company}</td>
+                  <td>${x.name}</td>
+                  <td>${x.tel}</td>
+                  <td>${x.email}</td>
+                  <td>${x.deadline}</td>
+                  <td>${x.comment}</td>
+                  <td>${x.created_at}</td>
+                  <td>${x.updated}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // readの処理をする関数を定義
+        // 読み込み時とデータ登録時の両方で実行したいため
+        const readData = url => {
+            axios.get(url)
+                .then(response => {
+                    // 成功した時
+                    console.log(response);
+                    // テーブルタグの中身を生成して表示
+                    document.getElementById('echo').innerHTML =
+                        convertArraytoListTag(response.data);
+                    // 更新ボタンクリック時の処理
+                    // 該当するidのデータを取得してフォームのvalueに設定する
+                    // データ取得後（DOM生成後）でないとクリックイベントを追加できない
+                    document.querySelectorAll('.editButton').forEach(x => {
+                        x.addEventListener('click', e => {
+                            // idを取得する
+                            const id = e.target.value;
+                            // リクエストを送信するurlを指定
+                            const requestUrl = `../api/edit.php?id=${id}`;
+                            // axios.get()でデータを送信
+                            axios.get(requestUrl)
+                                .then(response => {
+                                    document.getElementById("companyEdit").value = response.data.company;
+                                    document.getElementById("nameEdit").value = response.data.name;
+                                    document.getElementById("telEdit").value = response.data.tel;
+                                    document.getElementById("emailEdit").value = response.data.email;
+                                    document.getElementById("deadlineEdit").value = response.data.deadline;
+                                    document.getElementById("commentEdit").value = response.data.comment;
+                                    document.getElementById("hiddenId").value = response.data.id;
+                                }).catch(error => {})
+                                .finally();
+
+
+                            // モーダルの表示
+                            document.getElementById("modal").style.display = "block";
+
+
+                        });
+                    });
+                    // 削除ボタンクリック時の処理
+                    // phpにデータを送信してdbのデータを削除してもらう
+                    document.querySelectorAll('.deleteButton').forEach(x => {
+                        x.addEventListener('click', e => {
+                            if (window.confirm('Are you sure?')) {
+                                // idを取得
+                                const id = e.target.value;
+                                // リクエストを送信するurlを指定
+                                const requestUrl = `../api/delete.php?id=${id}`;
+                                // axios.delete()でデータを送信
+
+
+                            }
+                        });
+                    });
+                    return response;
+                })
+                .catch(error => {
+                    console.log(error);
+                })
+                .finally(() => {
+                    // 成功失敗どちらでも実行
+                });
+        }
+
+
+        // 送信ボタンクリック時の処理
+        document.getElementById('send').addEventListener('click', () => {
+            // createの処理
+            //formのキーとバリューを入れる容器を準備する
+            const postData = new FormData();
+
+            // dataに必要なパラメータを追加する
+            postData.append('company', document.getElementById('company').value);
+            postData.append('name', document.getElementById('name').value);
+            postData.append('tel', document.getElementById('tel').value);
+            postData.append('email', document.getElementById('email').value);
+            postData.append('deadline', document.getElementById('deadline').value);
+            // postData.append('radio', document.getElementsByClassName('radio').value);
+            postData.append('comment', document.getElementById('comment').value);
+            console.log(...postData.entries());
+
+            // axiosでデータを送信する処理
+            axios.post(createUrl, postData)
+                .then(response => {
+                    // 成功した時
+                    console.log(response);
+                    // 入力欄を空にする処理 
+                    document.getElementById('company').value = '';
+                    document.getElementById('name').value = '';
+                    document.getElementById('tel').value = '';
+                    document.getElementById('email').value = '';
+                    document.getElementById('deadline').value = '';
+                    // document.getElementsByClassName('radio').value = '';
+                    document.getElementById('comment').value = '';
+                })
+                .catch(error => {
+                    console.log(error);
+                })
+                .finally(() => {
+                    //成功失敗どちらでも実行
+                });
+
+        });
+        // アップデートフォームのupdateボタンクリック時の処理
+        // phpにデータを送信してdbのデータを更新してもらう
+        document.getElementById('updateButton').addEventListener('click', e => {
+            // 更新したいレコードのidを取得
+            const updateId = document.getElementById("hiddenId").value;
+
+
+            // formのキーとバリューを入れる容器を準備する
+            const updateData = new FormData();
+
+            // dataに必要なパラメータを追加する
+            updateData.append("company", document.getElementById("companyEdit").value);
+            updateData.append("name", document.getElementById("nameEdit").value);
+            updateData.append("tel", document.getElementById("telEdit").value);
+            updateData.append("email", document.getElementById("emailEdit").value);
+            updateData.append("deadline", document.getElementById("deadlineEdit").value);
+            updateData.append("comment", document.getElementById("commentEdit").value);
+            console.log(...updateData.entries());
+
+            // PUTメソッドの設定
+            const config = {
+                header: {
+                    "X-HTTP-Method-override": "PUT",
+                }
+            }
+
+            // 送信先の指定
+            const requestUrl = `../api/update.php?id=${updateId}`;
+            // axios.post()で送信の処理
+            axios.post(requestUrl, updateData, config)
+                .then(response => {
+                    alert("updated!");
+                    //モーダルを閉じる
+                    document.getElementById("modal").style.display = "none";
+                    //最新のデータを取得&表示
+                    readData(readUrl);
+                })
+                .catch(error => {})
+                .finally();
+
+        });
+
+        // 読み込み時のデータ取得処理
+        window.onload = () => {
+            readData(readUrl);
+        };
+    </script>
+</body>
+
+</html>
